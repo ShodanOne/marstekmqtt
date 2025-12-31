@@ -1,1 +1,1 @@
-/var/www/html/plugins/marstekmqtt/resources/requirements.txt
+paho-mqtt>=2.1.0
