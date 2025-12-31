@@ -1,1 +1,39 @@
-/var/www/html/plugins/marstekmqtt/plugin_info/info.json
+{
+	"id": "marstekmqtt",
+	"name": "Marstek MQTT",
+	"pluginVersion": "0.1",
+	"description": {
+		"fr_FR": "Plugin Marstek pour Jeedom via MQTT",
+		"en_US": "Marstek plugin for Jeedom using MQTT"
+	},
+	"licence": "AGPL",
+	"author": "Shodan",
+	"require": "4.2",
+	"os" : {
+		"min" : 10,
+		"max" : 12.99
+	},
+	"category": "energy",
+	"hasDependency": true,
+	"hasOwnDeamon": true,
+	"maxDependancyInstallTime": 60,
+	"changelog_beta": "",
+	"changelog": "",
+	"documentation_beta": "",
+	"documentation": "",
+	"link": "",
+	"language": [
+		"fr_FR",
+		"en_US"
+	],
+	"compatibility": [
+		"smart",
+		"luna",
+		"atlas",
+		"rpi",
+		"docker",
+		"diy",
+		"mobile",
+		"v4"
+	]
+}
