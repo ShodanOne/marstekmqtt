@@ -1,0 +1,1 @@
+/var/www/html/plugins/marstekmqtt/plugin_info/pre_install.php

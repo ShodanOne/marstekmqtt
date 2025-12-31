@@ -1,0 +1,1 @@
+/var/www/html/plugins/marstekmqtt/docs/fr_FR/changelog_beta.md

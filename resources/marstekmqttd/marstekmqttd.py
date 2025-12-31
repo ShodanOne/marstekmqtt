@@ -1,0 +1,1 @@
+/var/www/html/plugins/marstekmqtt/resources/marstekmqttd/marstekmqttd.py
