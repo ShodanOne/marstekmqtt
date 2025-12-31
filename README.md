@@ -57,6 +57,16 @@ It is recommanded to keep Timeout / Retry / Period parameters at the default val
 - The plugin will automatically detect Marstek devices on your network and create associated Jeedom Equipment.
   (the detection period will last ~15s).
 - The plugin will then enter the main loop, polling API and executing command coming from Jeedom
+### 3.1. Device page Example
+Here is a screenshot of an automatically created device :
+<img width="3000" height="1186" alt="Image" src="https://github.com/user-attachments/assets/02a7919b-e6e0-4f2e-8f78-35cd47e51e34" />
+- Device name can be modified.
+- Network information are read at detection
+- Additionnal information on the device are provided
+
+### 3.2. Device dashboard interface
+Here is a screenshot of a dashboard viewof the device (I know, it's ugly, but I am not familiar at all with html coding) :
+<img width="250" height="746" alt="Image" src="https://github.com/user-attachments/assets/7728e966-3475-46c6-bffb-61453a7c7b9c" />
 
 ## 4. Functionning
 
@@ -99,9 +109,33 @@ The full set of Data is retrived after 100 s by default *(10xPolling Period defa
 The plugin also provides calculated data for each device :
 - **Battery State** : Can be Charing/Discharging/Idle/Passthrough *(based on On-grid power and Off-grid power)*
 - **Battery SOH** : Calculated whenb SOC is 100% and charging is completed.
+
+### 4.4. Commands
+The plugin allows to change battery mode between Auto, AI, Manual and Passive.
+<img width="460" height="262" alt="Image" src="https://github.com/user-attachments/assets/d160e0bf-a73a-43b6-90e5-3f2296977dd4" />
+- **Auto and AI** mode :
+   Those 2 modes do not require any additionnal parameters, just click on the command to activate.
+- **Manual** mode :
+  - Calendar :
+    The plugin does not implement a 'calendar' selection for this mode (and will probably never, since I'm not good at html coding).\
+    It hard codes a calendar that is active at anytime (from 00:00 to 23:59, everyday).
+    > **Warning** : this calendar will overwrite the one you may have created in the app
+  - Power value :
+    The desired power value is specified through the *Mode Power* value (negative for charging, positive for discharging).
+    > Note *Mode Power* value is taken into account at mode activation only (if you change it later, the power value for Manual mode will remain unchanged)
+- **Passive** mode :
+  - Power value :
+    The desired power value is specified through the *Mode Power* value (negative for charging, positive for discharging).
+    > Note *Mode Power* value is taken into account at mode activation only (if you change it later, the power value for Passive mode will remain unchanged)
+  - Duration :
+    The duration for the passive mode is currently hard coded to 300s. It may be possible to adjust it in future release of the plugin.
+    
 ## 5. Todo / Knwon issues
 Here is a non-exhaustive list of things not yet implemented and known issues :
 - Battery software sometimes crash : it reverts to manual mode, Idle, CT lost and API disconnected.
   *I noticed this behaviour on Venus E Gen 3.0 on firmware 145.116.110, not sure if it is due to the plugin polling or not.*
+- Plugin does not allow to specify a calendar for Manual Mode.
 - TODO : Jeedom information specific to PV are not created yet (even if Venus D is detected).
-- And probably much more undiscovered remaining ...
+- TODO : Add command to allow duration adjustment for Passive Mode
+- TODO : Dynamic power value change for Manual and Passive mode 
+- And probably much more undiscovered issues remaining ...
