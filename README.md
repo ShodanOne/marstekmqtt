@@ -132,7 +132,7 @@ The plugin allows to change battery mode between Auto, AI, Manual and Passive.
   - Duration :
     The duration for the passive mode is currently hard coded to 300s. It may be possible to adjust it in future release of the plugin.
     
-## 5. Todo / Knwon issues
+## 5. Todo / Known issues
 Here is a non-exhaustive list of things not yet implemented and known issues :
 - Battery software sometimes crash : it reverts to manual mode, Idle, CT lost (arbitrary changed to CT-003) and API disconnected.\
   *This issues has been reported on ha_marstek-local-api Github, it seems to be a weakness of Marstek API (do not hesitate to report it to Marstek using the app). Increasing Timeout/poll period may help to avoid the issue.*
