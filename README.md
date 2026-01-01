@@ -25,7 +25,8 @@ It relies on marstek_local_api from [ha-marstek-api](https://github.com/jaapp/ha
 ## 1. Installation
 
 - Jeedom [MQTT Manager](https://market.jeedom.com/index.php?v=d&p=market_display&id=4213) plugin must be installed and running on your Jeedom.
-- unzip the folder marstekmqtt.zip in your Jeedom /plugins directory (or upload marstekmqtt directory in/plugins using Jeedom file editor
+- unzip the folder in your Jeedom /plugins directory (or upload marstekmqtt directory in/plugins using Jeedom file editor
+- make sure the plugin directory name is *marstekmqtt* in your Jeedom *plugins* directory
 - Go to th plugin management section
 - Select marstekmqtt plugin
 - Activate the plugin :
