@@ -20,23 +20,37 @@ require_once dirname(__FILE__) . '/../../../core/php/core.inc.php';
 // Fonction exécutée automatiquement après l'installation du plugin
 function marstekmqtt_install()
 {
+  // Recuperation de la version du plugin
+  $pluginVersion = marstekmqtt::getPluginVersion();
+    config::save('pluginVersion', $pluginVersion, 'marstekmqtt');
+  $apiVersion = marstekmqtt::getApiVersion();
+    config::save('apiVersion', $apiVersion, 'marstekmqtt');
+  Log::add("marstekmqtt", 'info', 'Start Install - Plugin version:'.$pluginVersion.' - Api version:'.$apiVersion);
+  
+  
   $packagesjson = dirname(__FILE__) . '/packages.json';
   if (file_exists($packagesjson))
   {
     unlink($packagesjson);
   }
+  plugin::
 }
 
 // Fonction exécutée automatiquement après la mise à jour du plugin
 function marstekmqtt_update()
 {
+  // Recuperation de la version du plugin
+  $pluginVersion = marstekmqtt::getPluginVersion();
+    config::save('pluginVersion', $pluginVersion, 'marstekmqtt');
+  $apiVersion = marstekmqtt::getApiVersion();
+    config::save('apiVersion', $apiVersion, 'marstekmqtt');
+  Log::add("marstekmqtt", 'info', 'Start Update - Plugin version:'.$pluginVersion.' - Api version:'.$apiVersion);
+ 
   $packagesjson = dirname(__FILE__) . '/packages.json';
   if (file_exists($packagesjson))
   {
     unlink($packagesjson);
   }
-}
-
 }
 
 // Fonction exécutée automatiquement après la suppression du plugin
