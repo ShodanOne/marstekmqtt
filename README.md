@@ -17,23 +17,24 @@ It relies on marstek_local_api from [ha-marstek-api](https://github.com/jaapp/ha
 ## Prerequisites
 
 - Local API must be enabled in Marstek app
-- Python 3.10
-- paho-mqtt python library
+- Python 3.10 (will be installed by the plugin in *resources/venv* directory)
+- paho-mqtt python library (will be installed by the plugin in *resources/venv* directory)
+- [marstek_local_api](https://github.com/jaapp/ha-marstek-local-api/tree/master/custom_components/marstek_local_api) (will be installed by the plugin in *3rdparty* directory)
 - Jeddom [MQTT Manager](https://market.jeedom.com/index.php?v=d&p=market_display&id=4213) plugin
 
 ## 1. Installation
 
-- Jeedom [MQTT Manager](https://market.jeedom.com/index.php?v=d&p=market_display&id=4213) plugin
+- Jeedom [MQTT Manager](https://market.jeedom.com/index.php?v=d&p=market_display&id=4213) plugin must be installed and running on your Jeedom.
 - unzip the folder marstekmqtt.zip in your Jeedom /plugins directory (or upload marstekmqtt directory in/plugins using Jeedom file editor
 - Go to th plugin management section
 - Select marstekmqtt plugin
 - Activate the plugin :
-    - dependencys install should start automatically (if not, launch dependencies manually)
+    - dependencies install should start automatically (if not, launch dependencies manually)
       > First dependencies install make take time since Python 3.10 will be installed in venv
   
 ## 2. Plugin Configuration
 
-<img width="2662" height="340" alt="Image" src="https://github.com/user-attachments/assets/6eec3341-3655-4ab2-8572-7c5c75284c67" />
+<img width="2656" height="342" alt="Image" src="https://github.com/user-attachments/assets/5a58188f-9121-49e6-a330-93cd7476f880" />
 Default configuration should work as long as API has been enabled from the app on port 30000.\
 It is recommanded to keep Timeout / Retry / Period parameters at the default value.
 
@@ -47,7 +48,7 @@ It is recommanded to keep Timeout / Retry / Period parameters at the default val
   Max number of retry for an API request - default value is 3.
 - **Polling period (Periode sondage (s))** :
   Minimun Polling period for API polling in seconds - default value is 10s, may have to be increased in case of trouble.
-  > Not recommended to be lower than 5s, does not make sense to set a value lower than timeout.
+  > Does not make sense to set a value lower than timeout.
 - **Remote Daemon (Demon distant)** :
   For debug purposes only, must remain unchecked.
   
@@ -132,8 +133,8 @@ The plugin allows to change battery mode between Auto, AI, Manual and Passive.
     
 ## 5. Todo / Knwon issues
 Here is a non-exhaustive list of things not yet implemented and known issues :
-- Battery software sometimes crash : it reverts to manual mode, Idle, CT lost and API disconnected.
-  *I noticed this behaviour on Venus E Gen 3.0 on firmware 145.116.110, not sure if it is due to the plugin polling or not.*
+- Battery software sometimes crash : it reverts to manual mode, Idle, CT lost (arbitrary changed to CT-003) and API disconnected.\
+  *This issues has been reported on ha_marstek-local-api Github, it seems to be a weakness of Marstek API (do not hesitate to report it to Marstek using the app). Increasing Timeout/poll period may help to avoid the issue.*
 - Plugin does not allow to specify a calendar for Manual Mode.
 - TODO : Jeedom information specific to PV are not created yet (even if Venus D is detected).
 - TODO : Add command to allow duration adjustment for Passive Mode
