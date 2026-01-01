@@ -28,14 +28,14 @@ def load_module_from_file(module_name: str, file_path: Path):
 
 # Get paths to integration modules
 # Try common locations
-integration_path = Path(__file__).parent / "marstek_local_api"
+integration_path = Path(__file__).parent.parent.parent / "3rdparty/marstek_local_api"
 if not integration_path.exists():
     # Try HA location
     integration_path = Path("/marstek_local_api")
 
 if not integration_path.exists():
     print(f"ERROR: Cannot find integration at:")
-    print(f"  - {Path(__file__).parent / 'marstek_local_api'}")
+    print(f"  - {Path(__file__).parent.parent.parent / '3rdparty/marstek_local_api'}")
     print(f"  - /marstek_local_api")
     sys.exit(1)
 
@@ -197,14 +197,16 @@ def main(args):
     param = {}
     if args.log == "debug":
         logging.basicConfig(stream=sys.stdout, level=logging.DEBUG, format="%(asctime)s %(message)s")
+    elif args.log == "error":
+        logging.basicConfig(stream=sys.stdout, level=logging.ERROR, format="%(asctime)s %(message)s")
+    elif args.log == "warning":
+    	logging.basicConfig(stream=sys.stdout, level=logging.WARNING, format="%(asctime)s %(message)s")
     else:
-        logging.basicConfig(stream=sys.stdout, level=logging.INFO, format="%(asctime)s %(message)s")
+    	logging.basicConfig(stream=sys.stdout, level=logging.INFO, format="%(asctime)s %(message)s")
+        
     logger = logging.getLogger()
 
-    logger.info("Daemon started successfully\n")
-    logger.debug("MQTTIP=" + args.mqtt_address + " Port=" + str(args.mqtt_port))
-    #logger.debug("MQTTClient=" + args.mqtt_client)
-    #logger.debug("MQTTuser=" + args.mqtt_username + " MQTTpass=" + args.mqtt_password + "\n")
+    logger.info("Starting Daemon with the following configuration :")
 
     param['mqtt-ip'] = args.mqtt_address
     param['mqtt-port'] = args.mqtt_port
@@ -214,20 +216,29 @@ def main(args):
     param['timeout'] = args.timeout
     param['retry'] = args.retry
     param['period'] = args.poll_period
+    param['port'] = args.port
     param['pidfile'] = args.pidfile
-
+    logger.info(" - API Port        :" + str(param['port']))
+    logger.info(" - API timeout     :" + str(param['timeout']))
+    logger.info(" - API retry       :" + str(param['retry']))
+    logger.info(" - API poll period :" + str(param['period']))
+    logger.info(" - MQTT ip address :" + param['mqtt-ip'])
+    logger.info(" - MQTT port       :" + str(param['mqtt-port']))
+    logger.info(" - MQTT username   :" + param['mqtt-username'])
+    logger.info(" - MQTT password   :" + ("*********" if param['mqtt-password']!='' else 'Not provided !'))
+    logger.info(" - log level       :" + args.log)
+    
     # Ecriture du fichier PID
     pid = str(os.getpid())
-    logger.warning("Writing PID %s to %s", pid, param['pidfile'])
+    logger.info("Writing PID %s to %s", pid, param['pidfile'])
     open(param['pidfile'], 'w').write("%s\n" % pid)
 
     try :
         asyncio.run(action(param))
     except (EOFError, SystemExit, KeyboardInterrupt):
+        logger.info("Stopping Daemon.")
         os.remove(param['pidfile'])
         sys.exit(0)
-
-
 
 async def action(param):
 
@@ -377,12 +388,12 @@ async def action(param):
 
     # Init Marstek API
     hass = MockHass()
-    api = MarstekUDPClient(hass, port=DEFAULT_PORT)
+    api = MarstekUDPClient(hass, port=param['port'])
 
     # demarrage MQTT
     mqttc = mqtt.Client(mqtt.CallbackAPIVersion.VERSION1)
     if param['mqtt-username'] and param['mqtt-password']:
-        logger.info('MQTT username and password provided')
+        #logger.info('MQTT username and password provided')
         mqttc.username_pw_set(username=param['mqtt-username'], password=param['mqtt-password'])
     mqttc.connect(host=param['mqtt-ip'], port=param['mqtt-port'], keepalive=60)
     mqttc.on_message = on_message
@@ -615,19 +626,20 @@ async def action(param):
             await api.disconnect()
             await asyncio.sleep(1.0)
             logger.error('-> Reconnecting ...')
-            api = MarstekUDPClient(hass, port=DEFAULT_PORT)
+            api = MarstekUDPClient(hass, port=param[port])
             await api.connect()
             fail_count = 0
 
-parser = argparse.ArgumentParser(prog='testmqtt')
-parser.add_argument("--mqtt_address", type=str, help="mqtt ip address", default="192.168.0.70")
+parser = argparse.ArgumentParser(prog='marstekmqttd')
+parser.add_argument("--port", type=int, help="API Port", default=30000)
+parser.add_argument("--mqtt_address", type=str, help="mqtt ip address", default="192.168.0.50")
 #parser.add_argument("--mqtt_client", type=str, help="mqtt client id", default="marstek")
 parser.add_argument("--mqtt_port", type=int, help="mqtt ip port", default=1883)
-parser.add_argument("--mqtt-username", type=str, help="MQTT username", default="Shodan")
-parser.add_argument("--mqtt-password", type=str, help="MQTT password",default="Raph33")
+parser.add_argument("--mqtt-username", type=str, help="MQTT username", default="xxxxxx")
+parser.add_argument("--mqtt-password", type=str, help="MQTT password",default="xxxxxx")
 parser.add_argument("--timeout", type=int, help="Marstek API timeout",default=5)
 parser.add_argument("--retry", type=int, help="Marstek API retry#",default=3)
-parser.add_argument("--poll_period", type=int, help="Marstek API poll period",default=10.0)
+parser.add_argument("--poll_period", type=int, help="Marstek API poll period",default=10)
 parser.add_argument("--pidfile", type=str, help="MQTT password",default="daemon.pid")
 parser.add_argument("--log", type=str, help="logging level", default="info")
 parser.set_defaults(func=main)
