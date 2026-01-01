@@ -18,12 +18,68 @@
 /* * ***************************Includes********************************* */
 require_once __DIR__  . '/../../../../core/php/core.inc.php';
 
-
-
 class marstekmqtt extends eqLogic {
   
   const PYTHON_PATH = __DIR__ . '/../../resources/venv/bin/python3';
   /*     * *************************Attributs****************************** */
+  
+  public static function getPluginVersion()
+  {
+    $pluginVersion = 'N/A';
+    try {
+      if (!file_exists(dirname(__FILE__) . '/../../plugin_info/info.json')) {
+        log::add(__CLASS__, 'warning', '[Plugin-Version] info.json file missing');
+      }
+      $data = json_decode(file_get_contents(dirname(__FILE__) . '/../../plugin_info/info.json'), true);
+      if (!is_array($data)) {
+        log::add(__CLASS__, 'warning', '[Plugin-Version] Cannot decode info.json file');
+      }
+      try {
+        $pluginVersion = $data['pluginVersion'];
+      } catch (\Exception $e) {
+        log::add(__CLASS__, 'warning', '[Plugin-Version] Unable to retrive plugin version');
+      }
+    } catch (\Exception $e) {
+      log::add(__CLASS__, 'debug', '[Plugin-Version] Get ERROR :: ' . $e->getMessage());
+    }
+    log::add(__CLASS__, 'info', '[Plugin-Version] PluginVersion :: ' . $pluginVersion);
+    return $pluginVersion;
+  }
+  
+  public static function getAPIVersion()
+  {
+    $apiVersion = 'N/A';
+    try
+    {
+      if (!file_exists(dirname(__FILE__) . '/../../3rdparty/marstek_local_api/manifest.json'))
+      {
+        log::add(__CLASS__, 'warning', '[API-Version] manifest.json file missing');
+      }
+      $data = json_decode(file_get_contents(dirname(__FILE__) . '/../../3rdparty/marstek_local_api/manifest.json'), true);
+      if (!is_array($data))
+      {
+        log::add(__CLASS__, 'warning', '[API-Version] Cannot decode manifest.json');
+      }
+      else
+      {
+      	try
+      	{
+        	$apiVersion = $data['version'];
+      	}
+      	catch (\Exception $e)
+      	{
+        	log::add(__CLASS__, 'warning', '[API-Version] Unable to retrieve API version');
+        	$apiVersion = 'N/A';
+      	}
+      }
+    }
+    catch (\Exception $e)
+    {
+      log::add(__CLASS__, 'debug', '[API-Version] Get ERROR :: ' . $e->getMessage());
+    }
+    log::add(__CLASS__, 'info', '[API-Version] APIVersion :: ' . $apiVersion);
+    return $apiVersion;
+  }
   
   /* ----- Daemon ----- */
   
@@ -114,7 +170,7 @@ class marstekmqtt extends eqLogic {
   
   public static function deamon_start()
   {
-    log::add(__CLASS__, 'debug', "Execution daemon_start");
+    log::add(__CLASS__, 'info', "Starting Daemon");
     self::deamon_stop();
     $deamon_info = self::deamon_info();
     if ($deamon_info['launchable'] != 'ok') {
@@ -146,7 +202,7 @@ class marstekmqtt extends eqLogic {
     // Construction de la commande avec ses parametres
     $cmd = system::getCmdPython3(__CLASS__) . " {$path}/marstekmqttd.py";
     $cmd = self::PYTHON_PATH . " {$path}/marstekmqttd.py";
-    #$cmd .= ' --port='.$port;
+    $cmd .= ' --port='.$port;
     $cmd .= ' --mqtt_address="'.$mqttip.'"';
     #$cmd .= ' --mqtt_client="'.$topic.'"';
     $cmd .= ' --mqtt_port='.$mqttport;
@@ -157,7 +213,7 @@ class marstekmqtt extends eqLogic {
     $cmd .= ' --poll_period='.$period;
     $cmd .= ' --log='.$loglev;
     $cmd .= ' --pidfile='.jeedom::getTmpFolder(__CLASS__) . '/deamon.pid';
-    log::add(__CLASS__, 'debug', "commande = ". $cmd);
+    log::add(__CLASS__, 'info', "commande = ". $cmd);
     
     // Declaration au plugin mqtt
     mqtt2::addPluginTopic(__CLASS__, 'marstek');
@@ -233,7 +289,7 @@ class marstekmqtt extends eqLogic {
     {
       $return['state'] = 'nok';
     }
-    elseif (!self::pythonRequirementsInstalled(self::PYTHON_PATH, __DIR__ . '/../../resources/requirements.txt'))
+    elseif ((!self::pythonRequirementsInstalled(self::PYTHON_PATH, __DIR__ . '/../../resources/requirements.txt')) or (self::getAPIVersion()=='N/A'))
     {
       $return['state'] = 'nok';
     }
@@ -892,8 +948,8 @@ class marstekmqtt extends eqLogic {
       if (($valSOC == 100) & ($ongridval == 0))
       {
         
-        $SOH = 100*($cmdcap/intval($rated));
-        log::add(__CLASS__, 'debug', 'processSOH : mise à jour => '.strval($SOH));
+        $SOH = 100*($cmdcap/$rated);
+        log::add(__CLASS__, 'debug', 'processSOH : mise à jour => '.strval($SOH).' (capa='.strval($capval).'/rated='.strval($rated).')');
         $cmdSOH = marstekmqttCmd::byEqLogicIdAndLogicalId($this->getId(), 'bat_soh');
         $cmdSOH->event($SOH);
       }
@@ -906,23 +962,45 @@ class marstekmqtt extends eqLogic {
   
   public function updateCommand($param)
   {
-    //log::add(__CLASS__, 'debug', 'updateCommand : '.$this->getName().' => ' .json_encode($param));
+    log::add(__CLASS__, 'debug', 'updateCommand : '.$this->getName().' => ' .json_encode($param));
     $nontraite = false;
+    
+    // -- Pour patch API 1.2.0rc7
+    $apiVersion = $this->getAPIVersion();
+    $model = $this->getConfiguration('name','N/A');
+    $firmware = $this->getConfiguration('firmware','N/A');
+    // -- fin pour patch API 1.2.0rc7
     foreach($param as $key => $value)
     {
-      //log::add(__CLASS__, 'debug', 'updateCommand : Traitement clé '.$key.'=>'.$value);
+      log::add(__CLASS__, 'debug', 'updateCommand : Traitement clé '.$key.'=>'.$value);
       $cmd = marstekmqttCmd::byEqLogicIdAndLogicalId($this->getId(), $key);
       if (is_object($cmd))
       {
+        // --- Patch pour la version API 1.2.0rc7
+        if (($key == 'bat_temp') or ($key == 'bat_capacity'))
+        {
+          log::add(__CLASS__, 'info', 'Api version = '.$apiVersion.' - Model = '.$model.' - Firmware = '.$firmware);
+          if (($apiVersion == '1.2.0.rc7') and ($model == 'VenusE 3.0') and (($firmware=='144') or ($firmware=='145')))
+          {
+            if ($key == 'bat_temp')
+              $factor = 10.0;
+            else
+              $factor = 0.1;
+            log::add(__CLASS__, 'info', 'key = '.$key.' - patched form value = '.strval($value).' to '.strval($value*$factor));
+           	$value = $value*$factor;
+          }
+        }
+        // --- fin patch pour la version API 1.2.0rc7
+      
         $curval = $cmd->execCmd();
         if ($curval != $value)
-        {
+        { 
           log::add(__CLASS__, 'debug', 'updateCommand : mise à jour commande '.$key.' : '.$curval.'=>'.$value);
           $cmd->event($value);
           if (($key='ongrid_power') or ($key='offgrid_power'))
             $this->processState();
           if (($key='ongrid_power') or ($key='bat_soc'))
-            $this->processSOH();
+            $this->processSOH();   
         }
         else
         {
