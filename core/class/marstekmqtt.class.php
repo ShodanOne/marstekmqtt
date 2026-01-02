@@ -42,7 +42,7 @@ class marstekmqtt extends eqLogic {
     } catch (\Exception $e) {
       log::add(__CLASS__, 'debug', '[Plugin-Version] Get ERROR :: ' . $e->getMessage());
     }
-    log::add(__CLASS__, 'info', '[Plugin-Version] PluginVersion :: ' . $pluginVersion);
+    //log::add(__CLASS__, 'info', '[Plugin-Version] PluginVersion :: ' . $pluginVersion);
     return $pluginVersion;
   }
   
@@ -77,7 +77,7 @@ class marstekmqtt extends eqLogic {
     {
       log::add(__CLASS__, 'debug', '[API-Version] Get ERROR :: ' . $e->getMessage());
     }
-    log::add(__CLASS__, 'info', '[API-Version] APIVersion :: ' . $apiVersion);
+    //log::add(__CLASS__, 'info', '[API-Version] APIVersion :: ' . $apiVersion);
     return $apiVersion;
   }
   
@@ -152,11 +152,11 @@ class marstekmqtt extends eqLogic {
     
     if (!class_exists('mqtt2')) {
       $return['launchable'] = 'nok';
-      $return['launchable_message'] = __("Le plugin MQTT Manager n'est pas installé", __FILE__);
+      $return['launchable_message'] = __("MQTT Manager plugin not installed", __FILE__);
     } else {
       if (mqtt2::deamon_info()['state'] != 'ok') {
         $return['launchable'] = 'nok';
-        $return['launchable_message'] = __("Le démon MQTT Manager n'est pas démarré", __FILE__);
+        $return['launchable_message'] = __("MQTT Manager plugin not running", __FILE__);
       }
     }
     
@@ -197,7 +197,7 @@ class marstekmqtt extends eqLogic {
     
     // Recuperation du chemin
     $path = realpath(dirname(__FILE__) . '/../../resources/marstekmqttd');
-    log::add(__CLASS__, 'debug', "chemin = ". $path);
+    //log::add(__CLASS__, 'debug', "chemin = ". $path);
                      
     // Construction de la commande avec ses parametres
     $cmd = system::getCmdPython3(__CLASS__) . " {$path}/marstekmqttd.py";
@@ -233,18 +233,18 @@ class marstekmqtt extends eqLogic {
         $i++;
       }
       if ($i >= 30) {
-        log::add(__CLASS__, 'error', __('Impossible de lancer le démon, vérifiez le log', __FILE__), 'unableStartDeamon');
+        log::add(__CLASS__, 'error', __('Unable to start daemon, check log.', __FILE__), 'unableStartDeamon');
         return false;
       }
     }
-    
+
     message::removeAll(__CLASS__, 'unableStartDeamon');
    	return true;
   }
   
   public static function deamon_stop()
   {
-    log::add(__CLASS__, 'debug', "Execution daemon_stop");
+    log::add(__CLASS__, 'info', "Stopping daemon");
     
     $localdemon = !intval(config::byKey('RemoteDemon', __CLASS__));
     if ($localdemon) {
@@ -434,7 +434,7 @@ class marstekmqtt extends eqLogic {
         	else
         	{
           		// L'equipement n'existe pas, on ne met rien à jour
-          		log::add(__CLASS__,'warning', 'Device status : Device='. $device .' Does not exists');
+          		log::add(__CLASS__,'warning', 'Device status : Device='. $device .' does not exists');
         	}
         }
     }
@@ -443,10 +443,10 @@ class marstekmqtt extends eqLogic {
   /* ----- Methodes de classe perso ----- */
   public function updateDevice($param)
   {
-    //log::add(__CLASS__, 'debug', 'updateDevice : '.$this->getName().' => ' .json_encode($param));
+    log::add(__CLASS__, 'debug', 'updateDevice : '.$this->getName().' => ' .json_encode($param));
     foreach($param as $key => $value)
     {
-      //log::add(__CLASS__, 'debug', 'updateDevice : Traitement clé '.$key.'=>'.$value);
+      log::add(__CLASS__, 'debug', 'updateDevice : Traitement clé '.$key.'=>'.$value);
       $curval = $this->getConfiguration($key,'N/A');
       //log::add(__CLASS__, 'debug', 'updateDevice : valeur actuelle : '.$curval);
       if (($curval != 'N/A') && ($curval != $value))
@@ -948,13 +948,15 @@ class marstekmqtt extends eqLogic {
       if (($valSOC == 100) & ($ongridval == 0))
       {
         
-        $SOH = 100*($cmdcap/$rated);
-        log::add(__CLASS__, 'debug', 'processSOH : mise à jour => '.strval($SOH).' (capa='.strval($capval).'/rated='.strval($rated).')');
+        $SOH = round(100*($capval / $rated),1);
+        log::add(__CLASS__, 'info', 'processSOH : mise à jour => '.strval($SOH).' (capa='.strval($capval).'/rated='.strval($rated).')');
         $cmdSOH = marstekmqttCmd::byEqLogicIdAndLogicalId($this->getId(), 'bat_soh');
         $cmdSOH->event($SOH);
       }
       else
+      {
         log::add(__CLASS__, 'debug', 'processSOH : conditons SOC/ongridpower non reunies');
+      }
     }
     else
       log::add(__CLASS__, 'debug', 'processSOH : rated cap non initialisé');
@@ -979,14 +981,13 @@ class marstekmqtt extends eqLogic {
         // --- Patch pour la version API 1.2.0rc7
         if (($key == 'bat_temp') or ($key == 'bat_capacity'))
         {
-          log::add(__CLASS__, 'info', 'Api version = '.$apiVersion.' - Model = '.$model.' - Firmware = '.$firmware);
           if (($apiVersion == '1.2.0.rc7') and ($model == 'VenusE 3.0') and (($firmware=='144') or ($firmware=='145')))
           {
             if ($key == 'bat_temp')
               $factor = 10.0;
             else
               $factor = 0.1;
-            log::add(__CLASS__, 'info', 'key = '.$key.' - patched form value = '.strval($value).' to '.strval($value*$factor));
+            log::add(__CLASS__, 'debug', 'updateCommand : key = '.$key.' - patched form value = '.strval($value).' to '.strval($value*$factor));
            	$value = $value*$factor;
           }
         }
@@ -997,9 +998,9 @@ class marstekmqtt extends eqLogic {
         { 
           log::add(__CLASS__, 'debug', 'updateCommand : mise à jour commande '.$key.' : '.$curval.'=>'.$value);
           $cmd->event($value);
-          if (($key='ongrid_power') or ($key='offgrid_power'))
+          if (($key=='ongrid_power') or ($key=='offgrid_power'))
             $this->processState();
-          if (($key='ongrid_power') or ($key='bat_soc'))
+          if (($key=='ongrid_power') or ($key=='bat_soc'))
             $this->processSOH();   
         }
         else
