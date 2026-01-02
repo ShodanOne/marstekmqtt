@@ -17,11 +17,11 @@
 	"hasDependency": true,
 	"hasOwnDeamon": true,
 	"maxDependancyInstallTime": 60,
-	"changelog_beta": "",
-	"changelog": "",
-	"documentation_beta": "",
-	"documentation": "",
-	"link": "",
+	"changelog_beta": "https://github.com/ShodanOne/marstekmqtt/blob/beta/docs/fr_FR/changelog_beta.md",
+	"changelog": "https://github.com/ShodanOne/marstekmqtt/blob/beta/docs/fr_FR/changelog.md",
+	"documentation_beta": "https://github.com/ShodanOne/marstekmqtt/blob/beta/README.md",
+	"documentation": "https://github.com/ShodanOne/marstekmqtt/blob/beta/README.md",
+	"link": "https://community.jeedom.com/t/plugin-marstekmqtt-version-beta/146058",
 	"language": [
 		"fr_FR",
 		"en_US"
@@ -33,7 +33,6 @@
 		"rpi",
 		"docker",
 		"diy",
-		"mobile",
 		"v4"
 	]
 }
