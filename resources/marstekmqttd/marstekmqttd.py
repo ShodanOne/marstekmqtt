@@ -626,7 +626,7 @@ async def action(param):
             await api.disconnect()
             await asyncio.sleep(1.0)
             logger.error('-> Reconnecting ...')
-            api = MarstekUDPClient(hass, port=param[port])
+            api = MarstekUDPClient(hass, port=param['port'])
             await api.connect()
             fail_count = 0
 
