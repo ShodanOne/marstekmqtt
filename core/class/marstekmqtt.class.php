@@ -981,7 +981,7 @@ class marstekmqtt extends eqLogic {
         // --- Patch pour la version API 1.2.0rc7
         if (($key == 'bat_temp') or ($key == 'bat_capacity'))
         {
-          if (($apiVersion == '1.2.0.rc7') and ($model == 'VenusE 3.0') and (($firmware=='144') or ($firmware=='145')))
+          if (($apiVersion == '1.2.0.rc7') and ($model == 'VenusE 3.0') and (intval($firmware >= 144)))
           {
             if ($key == 'bat_temp')
               $factor = 10.0;
