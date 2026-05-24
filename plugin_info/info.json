@@ -8,7 +8,7 @@
 	},
 	"licence": "AGPL",
 	"author": "Shodan",
-	"require": "4.4.12",
+	"require": "4.5",
 	"os" : {
 		"min" : 10,
 		"max" : 12.99
