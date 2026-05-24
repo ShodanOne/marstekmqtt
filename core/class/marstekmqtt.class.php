@@ -622,7 +622,7 @@ class marstekmqtt extends eqLogic {
     $cmd->setConfiguration('maxValue', 2500);
     $cmd->setConfiguration('step', 1);
     $arr = $cmd->getDisplay('parameters');
-    log::add(__CLASS__,'debug', 'CreateCommand : param slider : '.json_decode($arr));
+    //log::add(__CLASS__,'debug', 'CreateCommand : param slider : '.json_decode($arr));
     $arr = array ('step' => '1');
     $cmd->setDisplay('parameters', $arr);
     $cmd->setDisplay('showNameOndashboard', 1);
