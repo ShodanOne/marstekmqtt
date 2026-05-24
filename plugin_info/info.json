@@ -1,7 +1,7 @@
 {
 	"id": "marstekmqtt",
 	"name": "Marstek MQTT",
-	"pluginVersion": "0.1-beta.3",
+	"pluginVersion": "0.2-beta.1",
 	"description": {
 		"fr_FR": "Plugin Marstek pour Jeedom via MQTT",
 		"en_US": "Marstek plugin for Jeedom using MQTT"
