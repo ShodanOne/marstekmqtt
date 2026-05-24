@@ -170,6 +170,33 @@ $eqLogics = eqLogic::byType($plugin->getId());
                      
 							</div>
                               
+
+
+                            <!-- Paramètres specifiques Mode Hybride -->
+							<legend><i class="fas fa-cogs"></i> {{Mode hybride API/Modbus}}</legend>
+
+							<div class="form-group">
+                            	<label class="col-sm-4 control-label">{{Activer mode hybride}}</label>
+                              	<div class="col-sm-6">
+									<input type="checkbox" class="eqLogicAttr" data-l1key="configuration" data-l2key="hybridEnable" unchecked>
+                              	</div>
+                            </div>
+
+                            <label class="col-sm-4 control-label">{{Adresse IP Modbus}}</label>
+							<div class="col-sm-6">
+								<input type="text" class="eqLogicAttr" data-l1key="configuration" data-l2key="ipModbus" placeholder="{{Adresse IP Modbus}}">
+							</div>
+
+                            <label class="col-sm-4 control-label">{{Port Modbus}}</label>
+							<div class="col-sm-6">
+								<input type="text" class="eqLogicAttr" data-l1key="configuration" data-l2key="portModbus" placeholder="{{502}}">
+							</div>
+
+                            <label class="col-sm-4 control-label">{{Server Id}}</label>
+							<div class="col-sm-6">
+								<input type="text" class="eqLogicAttr" data-l1key="configuration" data-l2key="serverID" placeholder="{{1}}">
+							</div>
+
 						</div>
 
 						<!-- Partie droite de l onglet Équipement -->
@@ -182,50 +209,50 @@ $eqLogics = eqLogic::byType($plugin->getId());
                               ?>
 							</center>
                             <div class="form-group">
-								
+
                               	<label class="col-sm-2 control-label">{{Model}}</label>
 								<div class="col-sm-2">
                                 		<span class="eqLogicAttr" data-l1key="configuration" data-l2key="name"></span>
                                 </div>
-                              
+
                               	<label class="col-sm-2 control-label">{{ID}}</label>
 								<div class="col-sm-2">
                                 		<span class="eqLogicAttr" data-l1key="configuration" data-l2key="id"></span>
                               	</div>
-                              
+
                               	<label class="col-sm-2 control-label">{{Firmware ver.}}</label>
 								<div class="col-sm-2">
                                 		<span class="eqLogicAttr" data-l1key="configuration" data-l2key="firmware"></span>
                               	</div>
-                     
+
 							</div>
-                              
+
                             <div class="form-group">
-								
+
                               	<label class="col-sm-2 control-label">{{Rated Capacity}}</label>
 								<div class="col-sm-2">
                                 		<span class="eqLogicAttr" data-l1key="configuration" data-l2key="rated_capacity" ></span> Wh
                                 </div>
-                              
+
                               	<label class="col-sm-2 control-label">{{Charge Flag}}</label>
 								<div class="col-sm-2">
                                 		<span class="eqLogicAttr" data-l1key="configuration" data-l2key="charg_flag"></span>
                               	</div>
-                              
+
                               	<label class="col-sm-2 control-label">{{Discharge Flag}}</label>
 								<div class="col-sm-2">
                                 		<span class="eqLogicAttr" data-l1key="configuration" data-l2key="dischrg_flag"></span>
                               	</div>
-                     
+
 							</div>
-                              
+
 							<div class="form-group">
 								<label class="col-sm-2 control-label">{{Description}}</label>
 								<div class="col-sm-8">
 									<textarea class="form-control eqLogicAttr autogrow" data-l1key="comment"></textarea>
 								</div>
 							</div>
-                              
+
 						</div>
 					</fieldset>
 				</form>
@@ -258,7 +285,7 @@ $eqLogics = eqLogic::byType($plugin->getId());
 </div>
 
 <!-- Inclusion du fichier javascript du plugin (dossier, nom_du_fichier, extension_du_fichier, id_du_plugin) -->
-<?php 
+<?php
 include_file('desktop', 'marstekmqtt', 'js', 'marstekmqtt');
 include_file('core', 'plugin.template', 'js');
 ?>
