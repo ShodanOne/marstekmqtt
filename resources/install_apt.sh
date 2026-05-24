@@ -23,7 +23,7 @@ mv ha-marstek-local-api-master/custom_components/marstek_local_api marstek_local
 rm -R ha-marstek-local-api-master
 rm unzip master.zip
 
-TARGET_PYTHON_VERSION="3.10"
+TARGET_PYTHON_VERSION="3.11"
 # VENV_DIR=${BASE_DIR}/venv
 # APT_PACKAGES="first1 second2"
 
