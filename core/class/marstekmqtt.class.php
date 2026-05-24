@@ -42,10 +42,10 @@ class marstekmqtt extends eqLogic {
     } catch (\Exception $e) {
       log::add(__CLASS__, 'debug', '[Plugin-Version] Get ERROR :: ' . $e->getMessage());
     }
-    //log::add(__CLASS__, 'info', '[Plugin-Version] PluginVersion :: ' . $pluginVersion);
+    log::add(__CLASS__, 'info', '[Plugin-Version] PluginVersion :: ' . $pluginVersion);
     return $pluginVersion;
   }
-  
+
   public static function getAPIVersion()
   {
     $apiVersion = 'N/A';
@@ -80,9 +80,9 @@ class marstekmqtt extends eqLogic {
     //log::add(__CLASS__, 'info', '[API-Version] APIVersion :: ' . $apiVersion);
     return $apiVersion;
   }
-  
+
   /* ----- Daemon ----- */
-  
+
   public static function isrunning()
   {
     $test = true;
@@ -106,8 +106,8 @@ class marstekmqtt extends eqLogic {
       	return false;
       }
     }
-    
-    
+
+
     $result = mqtt2::getPluginForTopic(config::byKey('topic', __CLASS__, 'marstek'));
     //log::add(__CLASS__, 'debug', "isrunning result = " . $result);
     if ($result == __CLASS__)
@@ -116,50 +116,50 @@ class marstekmqtt extends eqLogic {
       $test=false;
     return $test;
   }
-  
+
   public static function deamon_info()
   {
-    
+
     //log::add(__CLASS__, 'debug', "Execution daemon_info");
     $return = array();
     $return['log'] = __CLASS__;
     $return['state'] = 'nok';
     $return['launchable'] = 'ok';
-    
+
     $port = intval(config::byKey('apiPort', __CLASS__, 30000));
     if ($port == 0) {
       log::add(__CLASS__, 'debug', "Invalid API port : ". strval($port));
       $return['launchable'] = 'nok';
     }
-    
+
     $timeout = intval(config::byKey('apiTimeout', __CLASS__, 5));
     if ($timeout == 0) {
       log::add(__CLASS__, 'debug', "Invalid timeout value : ". strval($timeout). " (must be >0)");
       $return['launchable'] = 'nok';
     }
-    
+
     $retry = intval(config::byKey('apiRetry', __CLASS__, 3));
     if ($retry == 0) {
       log::add(__CLASS__, 'debug', "Invalid retry value : ". strval($retry). " (must be >0)");
       $return['launchable'] = 'nok';
     }
-    
+
     $period = intval(config::byKey('period', __CLASS__, 10));
     if ($period == 0) {
       log::add(__CLASS__, 'debug', "Invalid period value : ". strval($period). " (must be >0)");
       $return['launchable'] = 'nok';
     }
-    
+
     if (!class_exists('mqtt2')) {
       $return['launchable'] = 'nok';
-      $return['launchable_message'] = __("MQTT Manager plugin not installed", __FILE__);
+      $return['launchable_message'] = __("Le plugin MQTT Manager n'est pas installé", __FILE__);
     } else {
       if (mqtt2::deamon_info()['state'] != 'ok') {
         $return['launchable'] = 'nok';
-        $return['launchable_message'] = __("MQTT Manager plugin not running", __FILE__);
+        $return['launchable_message'] = __("Le démon MQTT Manager n'est pas démarré", __FILE__);
       }
     }
-    
+
     if (self::isrunning()) {
       $return['state'] = 'ok';
     } else {
@@ -167,7 +167,7 @@ class marstekmqtt extends eqLogic {
     }
     return $return;
   }
-  
+
   public static function deamon_start()
   {
     log::add(__CLASS__, 'info', "Starting Daemon");
@@ -176,29 +176,29 @@ class marstekmqtt extends eqLogic {
     if ($deamon_info['launchable'] != 'ok') {
       throw new Exception(__('Veuillez vérifier la configuration', __FILE__));
     }
-    
+
     // Recupération des parametres
     $port = intval(config::byKey('apiPort', __CLASS__, 30000));
     $timeout = intval(config::byKey('apiTimeout', __CLASS__, 5));
     $retry = intval(config::byKey('apiRetry', __CLASS__, 3));
     $period = intval(config::byKey('period', __CLASS__, 10));
     $localdemon = !intval(config::byKey('RemoteDemon', __CLASS__));
-    
+
     // Recuperatino des parametres mqtt2
     $mqtt = mqtt2::getFormatedInfos();
     $mqttip = $mqtt['ip'];
     $mqttport = (isset($mqtt['port'])) ? intval($mqtt['port']) : 1883;
     $mqttuser = $mqtt['user'];
     $mqttpassword = $mqtt['password'];
-    
+
     // Recuperation du niveau de log
     $loglev = log::convertLogLevel(log::getLogLevel(__CLASS__));
     //$loglev = 'info';
-    
+
     // Recuperation du chemin
     $path = realpath(dirname(__FILE__) . '/../../resources/marstekmqttd');
     //log::add(__CLASS__, 'debug', "chemin = ". $path);
-                     
+
     // Construction de la commande avec ses parametres
     $cmd = system::getCmdPython3(__CLASS__) . " {$path}/marstekmqttd.py";
     $cmd = self::PYTHON_PATH . " {$path}/marstekmqttd.py";
@@ -214,11 +214,11 @@ class marstekmqtt extends eqLogic {
     $cmd .= ' --log='.$loglev;
     $cmd .= ' --pidfile='.jeedom::getTmpFolder(__CLASS__) . '/deamon.pid';
     log::add(__CLASS__, 'info', "commande = ". $cmd);
-    
+
     // Declaration au plugin mqtt
     mqtt2::addPluginTopic(__CLASS__, 'marstek');
     //mqtt2::addPluginTopic(__CLASS__, 'airzone');
-    
+
     // Lancement du demon
     if ($localdemon) {
       log::add(__CLASS__, 'debug', 'Lancement demon en local => '.$cmd);
@@ -233,19 +233,25 @@ class marstekmqtt extends eqLogic {
         $i++;
       }
       if ($i >= 30) {
-        log::add(__CLASS__, 'error', __('Unable to start daemon, check log.', __FILE__), 'unableStartDeamon');
+        log::add(__CLASS__, 'error', __('Impossible de lancer le démon, vérifiez le log', __FILE__), 'unableStartDeamon');
         return false;
       }
     }
 
+    /* --- Envoie des mode de fonctionnement des equipement (hybid ou UDP) vers le demon --- */
+  $eqlist = eqLogic::byType(__CLASS__);
+  foreach ($eqlist as $eq) {
+    $eq->sendHybridConfig();
+  }
+
     message::removeAll(__CLASS__, 'unableStartDeamon');
    	return true;
   }
-  
+
   public static function deamon_stop()
   {
-    log::add(__CLASS__, 'info', "Stopping daemon");
-    
+    log::add(__CLASS__, 'debug', "Execution daemon_stop");
+
     $localdemon = !intval(config::byKey('RemoteDemon', __CLASS__));
     if ($localdemon) {
     	$pid_file = jeedom::getTmpFolder(__CLASS__) . '/deamon.pid'; // ne pas modifier
@@ -258,22 +264,22 @@ class marstekmqtt extends eqLogic {
     }
     mqtt2::removePluginTopicByPlugin(__CLASS__);
   }
-  
+
   /* ----- Methodes statiques ----- */
-  
+
   /* ---- Methodes statiques pour dependances et enviroonement ---- */
   public static function backupExclude()
   {
 	return ['resources/venv'];
   }
-  
+
   public static function dependancy_install()
   {
     //log::add(__CLASS__, 'debug', "Execution dependancy_install");
     log::remove(__CLASS__ . '_update');
     return array('script' => dirname(__FILE__) . '/../../resources/install_apt.sh ' . jeedom::getTmpFolder(__CLASS__) . '/dependance', 'log' => log::getPathToLog(__CLASS__ . '_update'));
   }
-  
+
   public static function dependancy_info()
   {
     //log::add(__CLASS__, 'debug', "Execution dependancy_info");
@@ -284,7 +290,7 @@ class marstekmqtt extends eqLogic {
     if (file_exists(jeedom::getTmpFolder(__CLASS__) . '/dependance'))
     {
       $return['state'] = 'in_progress';
-    } 
+    }
     elseif (!file_exists(self::PYTHON_PATH))
     {
       $return['state'] = 'nok';
@@ -295,7 +301,7 @@ class marstekmqtt extends eqLogic {
     }
     return $return;
   }
-  
+
   private static function pythonRequirementsInstalled(string $pythonPath, string $requirementsPath)
   {
     if (!file_exists($pythonPath) || !file_exists($requirementsPath))
@@ -328,7 +334,7 @@ class marstekmqtt extends eqLogic {
 	}
 	return true;
   }
-  
+
   /* ---- Methodes statiques perso ---- */
   public static function createDevice($src, $name)
   {
@@ -348,6 +354,10 @@ class marstekmqtt extends eqLogic {
     $eqt->setConfiguration('rated_capacity', 'x');
     $eqt->setConfiguration('charg_flag', 0);
     $eqt->setConfiguration('dischrg_flag', 0);
+    $eqt->setConfiguration('hybridEnable', 0);
+    $eqt->setConfiguration('previousHybridEnable', 0);
+    $eqt->setConfiguration('portModbus', 502);
+
     switch ($name)
     {
       case 'VenusA' :
@@ -374,10 +384,10 @@ class marstekmqtt extends eqLogic {
     $eqt->save();
     return $eqt;
   }
-  
+
   /* --- Methode statique pour MQTT --- */
   public static function handleMqttMessage($_datas) {
-  
+
     //log::add(__CLASS__, 'debug', "HandleMqttMessage");
     //log::add(__CLASS__, 'debug', json_encode($_datas));
     if (isset($_datas[config::byKey('topic', __CLASS__, 'marstek')])) {
@@ -388,10 +398,10 @@ class marstekmqtt extends eqLogic {
       log::add(__CLASS__, 'error', 'handleMqttMessage : Unexepected topic - ignored');
       return;
     }
-    
+
     // Traitement du topic device
     if (isset($devices))
-    {  
+    {
       foreach($devices as $device => $param)
       {
         //log::add(__CLASS__,'debug', "Device Info ". $device ." => ".json_encode($param));
@@ -414,7 +424,7 @@ class marstekmqtt extends eqLogic {
         $eqt->updateDevice($param);
       }
     }
-   
+
     if (isset($status))
     {
      	foreach ($status as $device => $param)
@@ -434,19 +444,19 @@ class marstekmqtt extends eqLogic {
         	else
         	{
           		// L'equipement n'existe pas, on ne met rien à jour
-          		log::add(__CLASS__,'warning', 'Device status : Device='. $device .' does not exists');
+          		log::add(__CLASS__,'warning', 'Device status : Device='. $device .' Does not exists');
         	}
         }
     }
   }
-  
+
   /* ----- Methodes de classe perso ----- */
   public function updateDevice($param)
   {
-    log::add(__CLASS__, 'debug', 'updateDevice : '.$this->getName().' => ' .json_encode($param));
+    //log::add(__CLASS__, 'debug', 'updateDevice : '.$this->getName().' => ' .json_encode($param));
     foreach($param as $key => $value)
     {
-      log::add(__CLASS__, 'debug', 'updateDevice : Traitement clé '.$key.'=>'.$value);
+      //log::add(__CLASS__, 'debug', 'updateDevice : Traitement clé '.$key.'=>'.$value);
       $curval = $this->getConfiguration($key,'N/A');
       //log::add(__CLASS__, 'debug', 'updateDevice : valeur actuelle : '.$curval);
       if (($curval != 'N/A') && ($curval != $value))
@@ -464,19 +474,21 @@ class marstekmqtt extends eqLogic {
     }
     $this->save();
   }
-  
+
   public function createCommand()
   {
-    //log::add(__CLASS__,'debug', '>> Création des commandes pour la batterie '.$this->getHumanName()); 
+    log::add(__CLASS__,'debug', '>> Création des commandes pour la batterie '.$this->getHumanName());
   	$hasPV = ($this->getConfiguration('name') == "VenusD");
     $order = 0;
-    
+
     // Commande info 'mode'
+    $isnew = false;
     $cmd = $this->getCmd(null, 'mode');
     if (!is_object($cmd)) {
-      $cmd = new marstekmqttCmd();  
+      $cmd = new marstekmqttCmd();
       $cmd->setName(__('Mode', __FILE__));
       $cmd->setLogicalId('mode');
+      $isnew= true;
     }
     $cmd->setIsVisible(1);
     $cmd->setType('info');
@@ -486,10 +498,14 @@ class marstekmqtt extends eqLogic {
     $cmd->setDisplay('forceReturnLineAfter', 1);
     $cmd->setTemplate('dashboard', 'marstekmqtt::String_Default');
     $cmd->setOrder($order);
+
     $cmd->save();
-    $cmd->event('N/A'); // Initialisation à N/A
+    if ($isnew) {
+      $cmd->event('N/A'); // Initialisation à N/A
+      $isnew = false;
+    }
     $order++;
-    
+
     // Commande action AUTO
     $cmd = $this->getCmd(null, 'Auto');
     if (!is_object($cmd)) {
@@ -504,7 +520,7 @@ class marstekmqtt extends eqLogic {
     $cmd->setEqLogic_id($this->getId());
     $cmd->save();
     $order++;
-    
+
     // Commande action AI
     $cmd = $this->getCmd(null, 'AI');
     if (!is_object($cmd)) {
@@ -519,7 +535,7 @@ class marstekmqtt extends eqLogic {
     $cmd->setEqLogic_id($this->getId());
     $cmd->save();
     $order++;
-    
+
     // Commande action Manual
     $cmd = $this->getCmd(null, 'Manual');
     if (!is_object($cmd)) {
@@ -534,7 +550,7 @@ class marstekmqtt extends eqLogic {
     $cmd->setEqLogic_id($this->getId());
     $cmd->save();
     $order++;
-    
+
     // Commande action Pässive
     $cmd = $this->getCmd(null, 'Passive');
     if (!is_object($cmd)) {
@@ -547,14 +563,30 @@ class marstekmqtt extends eqLogic {
     $cmd->setSubType('other');
     $cmd->setOrder($order);
     $cmd->setEqLogic_id($this->getId());
+    $cmd->setDisplay('forceReturnLineAfter', 0);
+    $cmd->save();
+    $order++;
+
+    // Commande UPS
+    $cmd = $this->getCmd(null, 'Ups');
+    if (!is_object($cmd)) {
+      $cmd = new marstekmqttCmd();
+      $cmd->setLogicalId('Ups');
+      $cmd->setName(__('UPS', __FILE__));
+    }
+    $cmd->setIsVisible(1);
+    $cmd->setType('action');
+    $cmd->setSubType('other');
+    $cmd->setOrder($order);
+    $cmd->setEqLogic_id($this->getId());
     $cmd->setDisplay('forceReturnLineAfter', 1);
     $cmd->save();
     $order++;
-    
+
     // Commande info 'mode_power'
     //$cmd = $this->getCmd(null, 'mode_power');
     //if (!is_object($cmd)) {
-    //  $cmd = new marstekmqttCmd();  
+    //  $cmd = new marstekmqttCmd();
     //  $cmd->setName(__('Mode Power', __FILE__));
     //  $cmd->setLogicalId('mode_power');
     //}
@@ -572,7 +604,7 @@ class marstekmqtt extends eqLogic {
     //$cmd->event(0); // intialisation à 0
     //$modePowerId = $cmd->getId();
     //$order++;
-    
+
     // commande action set_mode_power
     $cmd = $this->getCmd(null, 'set_mode_power');
     if (!is_object($cmd))
@@ -580,6 +612,7 @@ class marstekmqtt extends eqLogic {
       $cmd = new marstekmqttCmd();
       $cmd->setName(__('Mode Power', __FILE__));
       $cmd->setLogicalId('set_mode_power');
+      $isnew = true;
     }
     $cmd->setIsVisible(1);
     $cmd->setType('action');
@@ -589,7 +622,7 @@ class marstekmqtt extends eqLogic {
     $cmd->setConfiguration('maxValue', 2500);
     $cmd->setConfiguration('step', 1);
     $arr = $cmd->getDisplay('parameters');
-    log::add(__CLASS__,'debug', 'CreateCommand : param slider : '.json_decode($arr)); 
+    log::add(__CLASS__,'debug', 'CreateCommand : param slider : '.json_decode($arr));
     $arr = array ('step' => '1');
     $cmd->setDisplay('parameters', $arr);
     $cmd->setDisplay('showNameOndashboard', 1);
@@ -597,15 +630,19 @@ class marstekmqtt extends eqLogic {
     $cmd->setOrder($order);
     $cmd->setEqLogic_id($this->getId());
     $cmd->save();
-    $cmd->event(0); // intialisation à 0
+    if ($isnew) {
+      $cmd->event(0); // intialisation à 0
+      $isnew = false;
+    }
     $order++;
-    
+
     // Commande info 'bat_soc'
     $cmd = $this->getCmd(null, 'bat_soc');
     if (!is_object($cmd)) {
-      $cmd = new marstekmqttCmd();  
+      $cmd = new marstekmqttCmd();
       $cmd->setName(__('SOC', __FILE__));
       $cmd->setLogicalId('bat_soc');
+      $isnew = true;
     }
     $cmd->setIsVisible(1);
     $cmd->setType('info');
@@ -615,15 +652,19 @@ class marstekmqtt extends eqLogic {
     $cmd->setTemplate('dashboard', 'marstekmqtt::Num_Bat_SOC_SOH');
     $cmd->setOrder($order);
     $cmd->save();
-    $cmd->event(0); // Initialisation à 0%
+    if ($isnew) {
+      $cmd->event(0); // Initialisation à 0%
+      $isnew = false;
+    }
     $order++;
-    
+
     // Commande info 'bat_soh' ==> Calculé
     $cmd = $this->getCmd(null, 'bat_soh');
     if (!is_object($cmd)) {
-      $cmd = new marstekmqttCmd();  
+      $cmd = new marstekmqttCmd();
       $cmd->setName(__('SOH', __FILE__));
       $cmd->setLogicalId('bat_soh');
+      $isnew = true;
     }
     $cmd->setIsVisible(1);
     $cmd->setType('info');
@@ -634,15 +675,19 @@ class marstekmqtt extends eqLogic {
     $cmd->setDisplay('forceReturnLineAfter', 1);
     $cmd->setOrder($order);
     $cmd->save();
-    $cmd->event(100); // intialisation à 100%
+    if ($isnew) {
+      $cmd->event(100); // intialisation à 100%
+      $isnew = false;
+    }
     $order++;
-    
+
     // commande info On_grid_power
     $cmd = $this->getCmd(null, 'ongrid_power');
     if (!is_object($cmd)) {
-      $cmd = new marstekmqttCmd();  
+      $cmd = new marstekmqttCmd();
       $cmd->setName(__('OnGrid Power', __FILE__));
       $cmd->setLogicalId('ongrid_power');
+      $isnew = true;
     }
     $cmd->setIsVisible(1);
     $cmd->setType('info');
@@ -653,15 +698,19 @@ class marstekmqtt extends eqLogic {
     $cmd->setTemplate('dashboard', 'core::badge');
     $cmd->setOrder($order);
     $cmd->save();
-    $cmd->event(0); // intialisation à 0
+    if ($isnew) {
+      $cmd->event(0); // intialisation à 0
+      $isnew = false;
+    }
     $order++;
-    
+
     // commande info Off_grid_power
     $cmd = $this->getCmd(null, 'offgrid_power');
     if (!is_object($cmd)) {
-      $cmd = new marstekmqttCmd();  
+      $cmd = new marstekmqttCmd();
       $cmd->setName(__('OffGrid Power', __FILE__));
       $cmd->setLogicalId('offgrid_power');
+      $isnew = true;
     }
     $cmd->setIsVisible(1);
     $cmd->setType('info');
@@ -673,15 +722,19 @@ class marstekmqtt extends eqLogic {
     $cmd->setDisplay('forceReturnLineAfter', 1);
     $cmd->setOrder($order);
     $cmd->save();
-    $cmd->event(0); // intialisation à 0
+    if ($isnew) {
+      $cmd->event(0); // intialisation à 0
+      $isnew = false;
+    }
     $order++;
-    
+
     // commande info Bat_capacity
     $cmd = $this->getCmd(null, 'bat_capacity');
     if (!is_object($cmd)) {
-      $cmd = new marstekmqttCmd();  
+      $cmd = new marstekmqttCmd();
       $cmd->setName(__('Battery Capacity', __FILE__));
       $cmd->setLogicalId('bat_capacity');
+      $isnew = true;
     }
     $cmd->setIsVisible(1);
     $cmd->setType('info');
@@ -693,15 +746,19 @@ class marstekmqtt extends eqLogic {
     $cmd->setDisplay('forceReturnLineAfter', 1);
     $cmd->setOrder($order);
     $cmd->save();
-    $cmd->event(0); // intialisation à 0
+    if ($isnew) {
+      $cmd->event(0); // intialisation à 0
+      $isnew = false;
+    }
     $order++;
-    
+
     // commande info bat_state ==> Calculé
     $cmd = $this->getCmd(null, 'bat_state');
     if (!is_object($cmd)) {
-      $cmd = new marstekmqttCmd();  
+      $cmd = new marstekmqttCmd();
       $cmd->setName(__('State', __FILE__));
       $cmd->setLogicalId('bat_state');
+      $isnew = true;
     }
     $cmd->setIsVisible(1);
     $cmd->setType('info');
@@ -710,15 +767,19 @@ class marstekmqtt extends eqLogic {
     $cmd->setEqLogic_id($this->getId());
     $cmd->setOrder($order);
     $cmd->save();
-    $cmd->event('Idle'); // Initialiastion à Idle
+    if ($isnew) {
+      $cmd->event('Standby'); // Initialiastion à Standby
+      $isnew = false;
+    }
     $order++;
-    
+
     // Commande info 'bat_temp'
     $cmd = $this->getCmd(null, 'bat_temp');
     if (!is_object($cmd)) {
-      $cmd = new marstekmqttCmd();  
+      $cmd = new marstekmqttCmd();
       $cmd->setName(__('Temperature', __FILE__));
       $cmd->setLogicalId('bat_temp');
+      $isnew = true;
     }
     $cmd->setIsVisible(1);
     $cmd->setType('info');
@@ -730,15 +791,19 @@ class marstekmqtt extends eqLogic {
     $cmd->setDisplay('forceReturnLineAfter', 1);
     $cmd->setOrder($order);
     $cmd->save();
-    $cmd->event(0); // intialisation à 0
+    if ($isnew) {
+      $cmd->event(0); // intialisation à 0
+      $isnew = false;
+    }
     $order++;
-    
+
     // commande info ct_state
     $cmd = $this->getCmd(null, 'ct_state');
     if (!is_object($cmd)) {
-      $cmd = new marstekmqttCmd();  
+      $cmd = new marstekmqttCmd();
       $cmd->setName(__('CT State', __FILE__));
       $cmd->setLogicalId('ct_state');
+      $isnew = true;
     }
     $cmd->setIsVisible(1);
     $cmd->setType('info');
@@ -748,15 +813,19 @@ class marstekmqtt extends eqLogic {
     $cmd->setDisplay('forceReturnLineAfter', 1);
     $cmd->setOrder($order);
     $cmd->save();
-    $cmd->event(false); // intialisation à 0
+    if ($isnew) {
+      $cmd->event(false); // intialisation à 0
+      $isnew = false;
+    }
     $order++;
-    
+
     // commande info a_power
     $cmd = $this->getCmd(null, 'a_power');
     if (!is_object($cmd)) {
-      $cmd = new marstekmqttCmd();  
+      $cmd = new marstekmqttCmd();
       $cmd->setName(__('A Power', __FILE__));
       $cmd->setLogicalId('a_power');
+      $isnew = true;
     }
     $cmd->setIsVisible(1);
     $cmd->setType('info');
@@ -767,15 +836,19 @@ class marstekmqtt extends eqLogic {
     $cmd->setTemplate('dashboard', 'core::badge');
     $cmd->setOrder($order);
     $cmd->save();
-    $cmd->event(0); // intialisation à 0
+    if ($isnew) {
+      $cmd->event(0); // intialisation à 0
+      $isnew = false;
+    }
     $order++;
-    
+
     // commande info b_power
     $cmd = $this->getCmd(null, 'b_power');
     if (!is_object($cmd)) {
-      $cmd = new marstekmqttCmd();  
+      $cmd = new marstekmqttCmd();
       $cmd->setName(__('B Power', __FILE__));
       $cmd->setLogicalId('b_power');
+      $isnew = true;
     }
     $cmd->setIsVisible(1);
     $cmd->setType('info');
@@ -786,15 +859,19 @@ class marstekmqtt extends eqLogic {
     $cmd->setTemplate('dashboard', 'core::badge');
     $cmd->setOrder($order);
     $cmd->save();
-    $cmd->event(0); // intialisation à 0
+    if ($isnew) {
+      $cmd->event(0); // intialisation à 0
+      $isnew = false;
+    }
     $order++;
-    
+
     // commande info c_power
     $cmd = $this->getCmd(null, 'c_power');
     if (!is_object($cmd)) {
-      $cmd = new marstekmqttCmd();  
+      $cmd = new marstekmqttCmd();
       $cmd->setName(__('C Power', __FILE__));
       $cmd->setLogicalId('c_power');
+      $isnew = true;
     }
     $cmd->setIsVisible(1);
     $cmd->setType('info');
@@ -806,15 +883,19 @@ class marstekmqtt extends eqLogic {
     $cmd->setDisplay('forceReturnLineAfter', 1);
     $cmd->setOrder($order);
     $cmd->save();
-    $cmd->event(0); // intialisation à 0
+    if ($isnew) {
+      $cmd->event(0); // intialisation à 0
+      $isnew = false;
+    }
     $order++;
-    
+
     // commande info total_power
     $cmd = $this->getCmd(null, 'total_power');
     if (!is_object($cmd)) {
-      $cmd = new marstekmqttCmd();  
+      $cmd = new marstekmqttCmd();
       $cmd->setName(__('Total Power', __FILE__));
       $cmd->setLogicalId('total_power');
+      $isnew = true;
     }
     $cmd->setIsVisible(1);
     $cmd->setType('info');
@@ -826,20 +907,24 @@ class marstekmqtt extends eqLogic {
     $cmd->setDisplay('forceReturnLineAfter', 1);
     $cmd->setOrder($order);
     $cmd->save();
-    $cmd->event(0); // intialisation à 0
+    if ($isnew) {
+      $cmd->event(0); // intialisation à 0
+      $isnew = false;
+    }
     $order++;
-    
+
     if ($hasPV)
     {
       //pv_power pv_voltage pv_current
     }
-    
+
     // commande info total_grid_output_energy
     $cmd = $this->getCmd(null, 'total_grid_output_energy');
     if (!is_object($cmd)) {
-      $cmd = new marstekmqttCmd();  
+      $cmd = new marstekmqttCmd();
       $cmd->setName(__('Total Grid Export Energy', __FILE__));
       $cmd->setLogicalId('total_grid_output_energy');
+      $isnew = true;
     }
     $cmd->setIsVisible(1);
     $cmd->setType('info');
@@ -851,15 +936,19 @@ class marstekmqtt extends eqLogic {
     $cmd->setDisplay('forceReturnLineAfter', 1);
     $cmd->setOrder($order);
     $cmd->save();
-    $cmd->event(0); // intialisation à 0
+    if ($isnew) {
+      $cmd->event(0); // intialisation à
+      $isnew = false;
+    }
     $order++;
-    
+
     // commande info total_grid_output_energy
     $cmd = $this->getCmd(null, 'total_grid_input_energy');
     if (!is_object($cmd)) {
-      $cmd = new marstekmqttCmd();  
+      $cmd = new marstekmqttCmd();
       $cmd->setName(__('Total Grid Import Energy', __FILE__));
       $cmd->setLogicalId('total_grid_input_energy');
+      $isnew = true;
     }
     $cmd->setIsVisible(1);
     $cmd->setType('info');
@@ -871,15 +960,19 @@ class marstekmqtt extends eqLogic {
     $cmd->setDisplay('forceReturnLineAfter', 1);
     $cmd->setOrder($order);
     $cmd->save();
-    $cmd->event(0); // intialisation à 0
+    if ($isnew) {
+      $cmd->event(0); // intialisation à 0
+      $isnew = false;
+    }
     $order++;
-    
+
     // commande info total_load_energy
     $cmd = $this->getCmd(null, 'total_load_energy');
     if (!is_object($cmd)) {
-      $cmd = new marstekmqttCmd();  
+      $cmd = new marstekmqttCmd();
       $cmd->setName(__('Total load energy consumed', __FILE__));
       $cmd->setLogicalId('total_load_energy');
+      $isnew = true;
     }
     $cmd->setIsVisible(1);
     $cmd->setType('info');
@@ -891,49 +984,36 @@ class marstekmqtt extends eqLogic {
     $cmd->setDisplay('forceReturnLineAfter', 1);
     $cmd->setOrder($order);
     $cmd->save();
-    $cmd->event(0); // intialisation à 0
+    if ($isnew) {
+      $cmd->event(0); // intialisation à 0
+      $isnew=false;
+    }
+    $order++;
+
+    // commande info efficience
+    $cmd = $this->getCmd(null, 'total_efficiency');
+    if (!is_object($cmd)) {
+      $cmd = new marstekmqttCmd();
+      $cmd->setName(__('Efficiency', __FILE__));
+      $cmd->setLogicalId('total_efficiency');
+      $isnew = true;
+    }
+    $cmd->setIsVisible(1);
+    $cmd->setType('info');
+    $cmd->setSubType('numeric');
+    $cmd->setEqLogic_id($this->getId());
+    $cmd->setUnite('%');
+    $cmd->setTemplate('dashboard', 'marstekmqtt::Num_Bat_SOC_SOH');
+    $cmd->setDisplay('forceReturnLineAfter', 1);
+    $cmd->setOrder($order);
+    $cmd->save();
+    if ($isnew) {
+      $cmd->event(0); // intialisation à 0
+      $isnew = false;
+    }
     $order++;
   }
-  
-  public function processState()
-  {
-    $state = 'Idle';
-    $cmdongrid = marstekmqttCmd::byEqLogicIdAndLogicalId($this->getId(), 'ongrid_power');
-    $cmdoffgrid = marstekmqttCmd::byEqLogicIdAndLogicalId($this->getId(), 'offgrid_power');
-    $cmdState = marstekmqttCmd::byEqLogicIdAndLogicalId($this->getId(), 'bat_state');
-    $ongridval = $cmdongrid->execCmd();
-    $offgridval = $cmdoffgrid->execCmd();
-    
-    if ($ongridval == 0)
-    {
-      if ($offgridval != 0)
-      {
-        $state = "Passthrough";
-      }
-      else
-      {
-        $state = "Idle";
-      }
-    }
-    elseif ($ongridval < 0)
-    {
-      $state = "Charging";
-    }
-    else
-    {
-      $state = "Discharging";
-    }
-    
-    $curState = $cmdState->execCmd();
-    if ($state != $curState)
-    {
-      //log::add(__CLASS__, 'debug', 'processState : mise à jour => '.$state);
-      $cmdState->event($state);
-    }
-    //else
-      //log::add(__CLASS__, 'debug', 'processState : inchangé');
-  }
-  
+
   public function processSOH()
   {
     $rated = $this->getConfiguration('rated_capacity');
@@ -947,26 +1027,41 @@ class marstekmqtt extends eqLogic {
       $valSOC = $cmdSOC->execCmd();
       if (($valSOC == 100) & ($ongridval == 0))
       {
-        
-        $SOH = round(100*($capval / $rated),1);
+
+        $SOH = 100*($cmdcap/$rated);
         log::add(__CLASS__, 'info', 'processSOH : mise à jour => '.strval($SOH).' (capa='.strval($capval).'/rated='.strval($rated).')');
         $cmdSOH = marstekmqttCmd::byEqLogicIdAndLogicalId($this->getId(), 'bat_soh');
         $cmdSOH->event($SOH);
       }
       else
-      {
         log::add(__CLASS__, 'debug', 'processSOH : conditons SOC/ongridpower non reunies');
-      }
     }
     else
       log::add(__CLASS__, 'debug', 'processSOH : rated cap non initialisé');
   }
-  
+
+  public function processEfficiency()
+  {
+    //log::add(__CLASS__, 'debug', 'Appel processEfficiency');
+  	$cmdIn = marstekmqttCmd::byEqLogicIdAndLogicalId($this->getId(), 'total_grid_input_energy');
+    $Inval = $cmdIn ->execCmd();
+    $cmdOut = marstekmqttCmd::byEqLogicIdAndLogicalId($this->getId(), 'total_grid_output_energy');
+    $Outval = $cmdOut ->execCmd();
+
+    if ($Outval != 0)
+      $eff = 100*$Outval/$Inval;
+    else
+      $eff = 0;
+    log::add(__CLASS__, 'debug', 'processEfficency : In => '.strval($Inval).' / Out = '.strval($Outval).' / efficency = '.strval($eff));
+    $cmdEff = marstekmqttCmd::byEqLogicIdAndLogicalId($this->getId(), 'total_efficiency');
+    $cmdEff->event($eff);
+  }
+
   public function updateCommand($param)
   {
     log::add(__CLASS__, 'debug', 'updateCommand : '.$this->getName().' => ' .json_encode($param));
     $nontraite = false;
-    
+
     // -- Pour patch API 1.2.0rc7
     $apiVersion = $this->getAPIVersion();
     $model = $this->getConfiguration('name','N/A');
@@ -978,30 +1073,15 @@ class marstekmqtt extends eqLogic {
       $cmd = marstekmqttCmd::byEqLogicIdAndLogicalId($this->getId(), $key);
       if (is_object($cmd))
       {
-        // --- Patch pour la version API 1.2.0rc7
-        if (($key == 'bat_temp') or ($key == 'bat_capacity'))
-        {
-          if (($apiVersion == '1.2.0.rc7') and ($model == 'VenusE 3.0') and (intval($firmware >= 144)))
-          {
-            if ($key == 'bat_temp')
-              $factor = 10.0;
-            else
-              $factor = 0.1;
-            log::add(__CLASS__, 'debug', 'updateCommand : key = '.$key.' - patched form value = '.strval($value).' to '.strval($value*$factor));
-           	$value = $value*$factor;
-          }
-        }
-        // --- fin patch pour la version API 1.2.0rc7
-      
         $curval = $cmd->execCmd();
         if ($curval != $value)
-        { 
+        {
           log::add(__CLASS__, 'debug', 'updateCommand : mise à jour commande '.$key.' : '.$curval.'=>'.$value);
           $cmd->event($value);
-          if (($key=='ongrid_power') or ($key=='offgrid_power'))
-            $this->processState();
-          if (($key=='ongrid_power') or ($key=='bat_soc'))
-            $this->processSOH();   
+          if (($key='ongrid_power') or ($key='bat_soc'))
+            $this->processSOH();
+          if (($key='total_grid_input_energy') or ($key='total_grid_output_energy'))
+           $this->processEfficiency();
         }
         else
         {
@@ -1016,8 +1096,25 @@ class marstekmqtt extends eqLogic {
     }
     return $nontraite;
   }
-  
-  
+
+  public function sendHybridConfig()
+  {
+    $src = $this->getConfiguration('src');
+    $topic_cmd = 'marstek/config/'.$src;
+
+    $modeSts = $this->getConfiguration('hybridEnable','0');
+    $ip = $this->getConfiguration('ipModbus', '');
+    $port = $this->getConfiguration('portModbus', 502);
+    $serverId = $this->getConfiguration('serverId', 1);
+    $enabled = $this->getIsEnable();
+    $payload = $payload = '{"mode":'.$modeSts.', "ip":"'.$ip.'", "port":'.$port.', "serverId":'.$serverId.', "enabled":'.$enabled.'}';
+
+    log::add(__CLASS__, 'debug', 'sendHybridConfiguration : publishing '.$topic_cmd.'=>'.$payload);
+    mqtt2::publish($topic_cmd, $payload);
+  }
+
+
+
   /*     * *********************Méthodes d'instance************************* */
 
   // Fonction exécutée automatiquement avant la création de l'équipement
@@ -1035,22 +1132,56 @@ class marstekmqtt extends eqLogic {
   // Fonction exécutée automatiquement avant la mise à jour de l'équipement
   public function preUpdate()
   {
+  	log::add(__CLASS__, 'debug', 'preUpdate : Execution');
   }
 
   // Fonction exécutée automatiquement après la mise à jour de l'équipement
   public function postUpdate()
   {
+    log::add(__CLASS__, 'debug', 'postUpdate : Execution');
+    $this->createCommand();
   }
 
   // Fonction exécutée automatiquement avant la sauvegarde (création ou mise à jour) de l'équipement
   public function preSave()
   {
+  	log::add(__CLASS__, 'debug', 'preSave : Execution');
+    $newHybridMode = $this->getConfiguration('hybridEnable', 0);
+    $oldHybridMode = $this->getConfiguration('previousHybridEnable', 0);
+    $ipModbus = $this->getConfiguration('ipModbus', '');
+
+    if ($newHybridMode == 1)
+    {
+      	if (preg_match('/^(25[0-5]|2[0-4][0-9]|1?[0-9]{1,2})(\.(25[0-5]|2[0-4][0-9]|1?[0-9]{1,2})){3}$/', $ipModbus) !== 1)
+      	{
+    		log::add(__CLASS__, 'warning', 'preSave : Modbus IP must be valide for Hybrid mode');
+      		$this->setConfiguration('hybridEnable', 0);
+          	event::add('jeedom::alert', array(
+				'level' => 'warning',
+				'page' => 'marstekmqtt',
+				'message' => __('Adresse IP modbus invalide', __FILE__),
+			));
+    	}
+  	}
   }
 
   // Fonction exécutée automatiquement après la sauvegarde (création ou mise à jour) de l'équipement
   public function postSave()
   {
-    //log::add(__CLASS__, 'debug', 'postSave');
+    log::add(__CLASS__, 'debug', 'postSave : Execution');
+    $newHybridMode = $this->getConfiguration('hybridEnable', 0);
+    $oldHybridMode = $this->getConfiguration('previousHybridEnable', 0);
+
+    if ($oldHybridMode != $newHybridMode)
+    {
+    	if ($newHybridMode)
+      		log::add(__CLASS__, 'debug', 'postSave : Updating hybid mode => Activation');
+      	else
+        	log::add(__CLASS__, 'debug', 'postSave : Updating hybid mode => DE-Activation');
+      	$this->setConfiguration('previousHybridEnable', $newHybridMode);
+      	$this->save(true);
+      	$this->sendHybridConfig();
+    }
   }
 
   // Fonction exécutée automatiquement avant la suppression de l'équipement
@@ -1063,19 +1194,19 @@ class marstekmqtt extends eqLogic {
   {
   }
 
-  
+
   // returne l'image du device
   public function getImage()
   {
     $imgName = $this->getConfiguration('img','default.png');
     return 'plugins/marstekmqtt/data/img/devices/'.$imgName;
   }
-  
+
   public static function templateWidget()
   {
     $return = array('info' => array('string' => array()));
-    
-    
+
+
     // Info Binaire Gris/Jaune
     $return['info']['binary']['Bin_Grey_Green'] = array
     (
@@ -1089,7 +1220,7 @@ class marstekmqtt extends eqLogic {
               	'#_desktop_width_#' => '16'
             )
     );
-    
+
     // Info Bat_SOC_SOH
     $return['info']['numeric']['Num_Bat_SOC_SOH'] = array
     (
@@ -1113,7 +1244,7 @@ class marstekmqtt extends eqLogic {
             )
         )
     );
-    
+
     $return['info']['string']['String_Default'] = array
     (
     	'template' => 'tmplmultistate',
@@ -1126,14 +1257,14 @@ class marstekmqtt extends eqLogic {
             )
         )
     );
-    
+
     return $return;
   }
 
   /*     * **********************Getteur Setteur*************************** */
 }
-  
-  
+
+
 
 class marstekmqttCmd extends cmd {
   /*     * *************************Attributs****************************** */
@@ -1157,10 +1288,10 @@ class marstekmqttCmd extends cmd {
   // Exécution d'une commande
   public function execute($_options = array())
   {
-    log::add('marstekmqtt', 'debug', 'Execute');
-    
+    log::add(__CLASS__, 'debug', 'Execute');
+
     $eqLogic = $this->getEqLogic();
-    
+
     if (is_object($eqLogic))
     {
       $src = $eqLogic->getConfiguration('src');
@@ -1169,14 +1300,15 @@ class marstekmqttCmd extends cmd {
       $command = $this->getLogicalId();
       $cmdSlider = cmd::byEqLogicIdAndLogicalId($eqLogic->getID(),'set_mode_power');
       $sliderValue = $cmdSlider->getConfiguration('lastCmdValue');
-      log::add('marstekmqtt', 
+      log::add(__CLASS__,
                'debug',
                'Execute : src='.$src.' / command='.$command.' / ref slider='.$cmdSlider->getHumanName(). ' valeur = '.$sliderValue);
-      
+
       switch ($command)
       {
         case 'Auto':
         case 'AI' :
+        case 'Ups' :
           $topic_cmd = 'marstek/action/'.$src;
           $payload = '{"cmd":"'.$command.'"}';
           break;
@@ -1190,7 +1322,7 @@ class marstekmqttCmd extends cmd {
       }
       if ($publish)
       {
-        log::add('marstekmqtt', 'debug', 'execute : publishing '.$topic_cmd.'=>'.$payload);
+        log::add(__CLASS__, 'debug', 'execute : publishing '.$topic_cmd.'=>'.$payload);
         mqtt2::publish($topic_cmd, $payload);
       }
     }
