@@ -2,23 +2,24 @@
 
 <img width="154" height="174" alt="Image" src="https://github.com/user-attachments/assets/1f65299b-b955-4b85-9443-9262e751178c" />
 
-> **Firmware warning:** Marstek’s Local API firmware is still immature, so most glitches originate in the batteries, not here.
+> **Firmware warning:** Marstek’s Local API firmware is still immature, so most glitches do not come from this plugin.
 > Report issues to Marstek unless you can clearly trace them to this project.\
-> **Note :** This plugin has been tested on a Venus E 3.0 with firmware 145.116.110.
+> **Note :** This plugin has been tested on a Venus E 3.0 with firmware 148.
 
-Jeedom plugin for Marstek energy storage systems using the official Local API (Rev 1.0).\
-It provides comprehensive monitoring and control of Marstek Venus C/D/E devices without requiring cloud connectivity or additional hardware.
+Jeedom plugin for Marstek energy storage systems using the official Local API (Rev 2.0) and Modbus over IP.\
+It provides comprehensive monitoring and control of Marstek Venus C/D/E devices without requiring cloud connectivity.
 
-This plugin is still in beta version. It targets following Marstek Devices : Venus C, Venus D, Venus E.\
-Protocol: JSON over UDP (port 30000+)
+This plugin is still in beta version. It should works with the following Marstek Devices : Venus C, Venus D, Venus E.
 
 It relies on marstek_local_api from [ha-marstek-api](https://github.com/jaapp/ha-marstek-local-api) project
 
 ## Prerequisites
 
 - Local API must be enabled in Marstek app
-- Python 3.10 (will be installed by the plugin in *resources/venv* directory)
+- Python 3.11 (will be installed by the plugin in *resources/venv* directory)
 - paho-mqtt python library (will be installed by the plugin in *resources/venv* directory)
+- pymodbus python library (will be installed by the plugin in *resources/venv* directory)
+- pyyaml python library (will be installed by the plugin in *resources/venv* directory)
 - [marstek_local_api](https://github.com/jaapp/ha-marstek-local-api/tree/master/custom_components/marstek_local_api) (will be installed by the plugin in *3rdparty* directory)
 - Jeddom [MQTT Manager](https://market.jeedom.com/index.php?v=d&p=market_display&id=4213) plugin
 
@@ -31,13 +32,14 @@ It relies on marstek_local_api from [ha-marstek-api](https://github.com/jaapp/ha
 - Select marstekmqtt plugin
 - Activate the plugin :
     - dependencies install should start automatically (if not, launch dependencies manually)
-      > First dependencies install make take time since Python 3.10 will be installed in venv
+      > First dependencies install may take time especially if Python 3.11 must be installed in venv
   
 ## 2. Plugin Configuration
 
 <img width="2656" height="342" alt="Image" src="https://github.com/user-attachments/assets/5a58188f-9121-49e6-a330-93cd7476f880" />
+
 Default configuration should work as long as API has been enabled from the app on port 30000.\
-It is recommanded to keep Timeout / Retry / Period parameters at the default value.
+From lessons learned, it is recommanded to set Timeout = 10s / Retry = 3 / Period = 60s.
 
 <ins>Parameter description</ins> :
 - **Marstek API Port (Port API Marstek)** :
@@ -58,27 +60,33 @@ It is recommanded to keep Timeout / Retry / Period parameters at the default val
 - Start the plugin
 - The plugin will automatically detect Marstek devices on your network and create associated Jeedom Equipment.
   (the detection period will last ~15s).
-- The plugin will then enter the main loop, polling API and executing command coming from Jeedom
+- The plugin will then enter the main loop, polling API or Modbus and executing command coming from Jeedom
 ### 3.1. Device page Example
 Here is a screenshot of an automatically created device :
-<img width="3000" height="1186" alt="Image" src="https://github.com/user-attachments/assets/02a7919b-e6e0-4f2e-8f78-35cd47e51e34" />
+<img width="3008" height="1190" alt="image" src="https://github.com/user-attachments/assets/23db43e4-5771-48c6-a33c-b00a5a963da6" />
+
 - Device name can be modified.
 - Network information are read at detection
+- Hybrid mode can be activated/de-activated
+  >- When activated : Modbus IP, Modbus Port and Server Id must be specified
+  >- Default vlaue for Modbus Port is 502
+  >- Default value for Server Id is 1 (works with Elfin module), you may try 0 if your get error when trying to retrieve Modbus data. 
 - Additionnal information on the device are provided
 
 ### 3.2. Device dashboard interface
 Here is a screenshot of a dashboard viewof the device (I know, it's ugly, but I am not familiar at all with html coding) :
-<img width="250" height="746" alt="Image" src="https://github.com/user-attachments/assets/7728e966-3475-46c6-bffb-61453a7c7b9c" />
+<img width="250" height="750" alt="image" src="https://github.com/user-attachments/assets/0d191037-6beb-4d0c-a51d-1d47891f4ac4" />
 
 ## 4. Functionning
 
 ### 4.1. Periodical poll
+Periodical poll is the defaut mode, it relies only on the Local UDP API.
 The plugin periodically polls data on detected devices (1 loop is done every *Polling Period* seconds minimum).\
-The polling period may be much longer than the specified minimum value, depending on the number of devices on your network, the request timeout and retry.\
+The polling period may be much longer than the specified minimum value, depending if timeout is reached timeout and retry tentative.\
 For performance concerns, not all data are retrieve at every loop.
 > **Note :** Wifi and bluetooth data are read only once at device discovery, they are not updated afterward.
 
-### 4.2. Requested data depending loop
+**Requested data depending loop**
 The full set of Data is retrived after 100 s by default *(10xPolling Period default value)*.
 - **Every loop** :
   By default, those values are retrieved every 10s *(Polling Period default value)*.
@@ -106,17 +114,42 @@ The full set of Data is retrived after 100 s by default *(10xPolling Period defa
   - Total Grid Output Energy
   - Total load Energy
   - Total Solar Energy (Venus D only)
-    
+
+### 4.2. Hybid Mode
+Hybrid mode is a dedicated mode that mainly relies on Modbus over IP. It requires A modbus to IP device (like Elfin EW11 module) to be connected to RS485 port, or a wire ethernet connection for Venus C 3.0.\
+It can be activated through the device configuration page. You can revert to Periodical Poll through API at any time by de-activating Hybrid mode.\
+Hybrid mode activate 4 different task for each battery :
+- **Every 1 sec** :
+  - Battery state is read on Modbus
+  - Upon battery state change : On-Grid Power, Off-Grid Power and SOC are read on Modbus
+
+- **Every 10 sec** :
+  if Battery is not in 'Standby' State :
+  - On-Grid Power, Off-Grid Power and SOC are read on Modbus
+  - Battery capacity is calculated
+  - 
+- **Every 1 min** :
+  - Temperature, total input Energy, total Output Energy are read on Modbus
+  - Battery efficiency is calculated
+  - battery mode is read through API
+ 
+- **Every 10 min** :
+  - Battery total capacity and battery firmware are read on Modbus
+
+>**Note**: In hybrid mode, CT data are not retrieved and are all set to zero.
+
 ### 4.3. Calculated data
 The plugin also provides calculated data for each device :
-- **Battery State** : Can be Charing/Discharging/Idle/Passthrough *(based on On-grid power and Off-grid power)*
-- **Battery SOH** : Calculated whenb SOC is 100% and charging is completed.
+- **Battery SOH** : Calculated when SOC is 100% and charging is completed => This may be removed in future version since it may not be relevant.
+* In API Polling mode, 'Battery State' is calculated (based on On-grid power and Off-grid power) : can be Charing/Discharging/Standby/Passthrough*
 
 ### 4.4. Commands
-The plugin allows to change battery mode between Auto, AI, Manual and Passive.
-<img width="460" height="262" alt="Image" src="https://github.com/user-attachments/assets/d160e0bf-a73a-43b6-90e5-3f2296977dd4" />
-- **Auto and AI** mode :
-   Those 2 modes do not require any additionnal parameters, just click on the command to activate.
+The plugin allows to change battery mode between Auto, AI, Manual, Passive and UPS.
+
+<img width="333" height="180" alt="image" src="https://github.com/user-attachments/assets/36c77679-a451-4410-a3bb-d0e4c003a774" />
+
+- **Auto, AI and UPS** mode :
+   Those 3 modes do not require any additionnal parameters, just click on the command to activate.
 - **Manual** mode :
   - Calendar :
     The plugin does not implement a 'calendar' selection for this mode (and will probably never, since I'm not good at html coding).\
